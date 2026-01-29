@@ -416,14 +416,14 @@ export default function App() {
     const message = `${greeting} ${
       client.name
     }. Esperando que se encuentre muy bien.
-Le saluda  ${currentUser} del área de cartera Auto Club.
+Le saluda ${currentUser} del área de cartera Auto Club.
 Le escribo para recordarle sus pagos pendientes:
 
 ${iconSmallDiamond} Valor de Cuota: $${valCuota.toFixed(2)}
 ${iconMoneyBag} Total a Pagar: $${valTotal.toFixed(2)}
 ${iconCalendar} Correspondiente a: ${monthsText}
 
-Agradezcemos una vez efectuado el pago nos comparta su comprobante pago por este medio.`;
+Agradecemos, una vez efectuado el pago, nos comparta su comprobante de pago.`;
 
     const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(
       message
