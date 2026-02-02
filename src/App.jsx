@@ -423,7 +423,7 @@ ${iconSmallDiamond} Valor de Cuota: $${valCuota.toFixed(2)}
 ${iconMoneyBag} Total a Pagar: $${valTotal.toFixed(2)}
 ${iconCalendar} Correspondiente a: ${monthsText}
 
-Agradecemos, una vez efectuado el pago, nos comparta su comprobante de pago.`;
+Agradecemos, una vez efectuado el pago, nos comparta su comprobante de pago por este medio.`;
 
     const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(
       message
