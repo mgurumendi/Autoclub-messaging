@@ -44,7 +44,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-// Lista inicial de asesores
+// Lista inicial de Ejecutivo
 const DEFAULT_EXECUTIVES = [
   'Fabiola Narváez',
   'Gianella Baux',
@@ -288,7 +288,7 @@ export default function App() {
     }
   }, [clients, senderNumber, currentUser, loading, isDataLoaded]);
 
-  // --- GESTIÓN ASESORES ---
+  // --- GESTIÓN EJECUTIVO ---
   const handleAddExecutive = (e) => {
     e.preventDefault();
     const name = newExecName.trim();
@@ -300,7 +300,7 @@ export default function App() {
     setExecutives(newList);
     localStorage.setItem('cobranzas_v6_executives', JSON.stringify(newList));
     setNewExecName('');
-    showToast("Asesor añadido.");
+    showToast("Ejecutivo añadido.");
   };
 
   const handleDeleteExecutive = (name) => {
@@ -308,7 +308,7 @@ export default function App() {
     setExecutives(newList);
     localStorage.setItem('cobranzas_v6_executives', JSON.stringify(newList));
     if (currentUser === name) handleLogout();
-    showToast("Asesor eliminado.");
+    showToast("Ejecutivo eliminado.");
   };
 
   // --- BORRADO INDEPENDIENTE ---
@@ -421,7 +421,7 @@ export default function App() {
                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-black">{(user || 'U').charAt(0)}</div>
                     <div className="flex-1">
                        <p className="font-black text-slate-800 uppercase text-sm leading-none text-left">{user}</p>
-                       <p className="text-[10px] text-slate-400 uppercase font-bold mt-1 tracking-widest text-left">Asesor de Cartera</p>
+                       <p className="text-[10px] text-slate-400 uppercase font-bold mt-1 tracking-widest text-left">Ejecutivo de Cartera</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-300" />
                   </button>
@@ -482,7 +482,7 @@ export default function App() {
                 <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm text-left">
                    <table className="w-full text-sm text-left">
                       <thead className="bg-slate-50 border-b text-[10px] font-black uppercase text-slate-400 text-left text-left">
-                        <tr><th className="px-8 py-4 text-left">Asesor</th><th className="px-8 py-4 text-right">Estándar</th><th className="px-8 py-4 text-right">ADP</th><th className="px-8 py-4 text-right">ACV</th><th className="px-8 py-4 text-right">Total</th></tr>
+                        <tr><th className="px-8 py-4 text-left">Ejecutivo</th><th className="px-8 py-4 text-right">Estándar</th><th className="px-8 py-4 text-right">ADP</th><th className="px-8 py-4 text-right">ACV</th><th className="px-8 py-4 text-right">Total</th></tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {globalStats.map(adv => (
@@ -603,12 +603,12 @@ export default function App() {
 
       {/* --- MODALES CORREGIDOS --- */}
 
-      {/* GESTIÓN ASESORES - FIXED */}
+      {/* GESTIÓN EEJECUTIVOS - FIXED */}
       {showUserMgmtModal && (
         <div className="fixed inset-0 bg-slate-900/90 z-[600] flex items-center justify-center p-6 backdrop-blur-xl animate-fade-in text-left">
           <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden border border-slate-200 flex flex-col max-h-[90vh] shadow-2xl">
             <div className="px-8 py-6 border-b flex justify-between items-center bg-slate-50 text-left">
-              <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-left">Gestión de Asesores</span>
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-left">Gestión de Ejecutivos</span>
               <button onClick={() => setShowUserMgmtModal(false)} className="text-slate-400 transition-all hover:rotate-90 p-2"><X className="w-6 h-6 text-left" /></button>
             </div>
             <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar text-left">
@@ -690,7 +690,7 @@ export default function App() {
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-6 shadow-md"><AlertCircle className="w-8 h-8 text-left" /></div>
             <h3 className="text-xl font-black uppercase mb-2 tracking-tighter text-left">Confirmar Borrado?</h3>
             <p className="text-slate-50 text-sm mb-8 leading-relaxed text-left">
-              Se eliminarán permanentemente los clientes de la base <strong>{deleteTarget === 'all' ? 'TOTAL' : deleteTarget}</strong> del asesor <strong>{currentUser}</strong>.
+              Se eliminarán permanentemente los clientes de la base <strong>{deleteTarget === 'all' ? 'TOTAL' : deleteTarget}</strong> del ejecutivo <strong>{currentUser}</strong>.
             </p>
             <div className="space-y-2 text-left">
                <button onClick={handleClearDatabase} className="w-full bg-red-600 text-white py-4 rounded-xl font-black uppercase text-[10px] shadow-lg active:scale-95 text-center">Confirmar Borrado</button>
