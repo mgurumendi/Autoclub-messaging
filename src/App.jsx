@@ -47,26 +47,17 @@ const DEFAULT_EXECUTIVES = [
 ];
 
 export default function App() {
-  // --- CARGA DE LIBRERÍA EXCEL ---
-  useEffect(() => {
-    if (!window.XLSX) {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
-  // --- ESTADOS ---
+  // --- ESTADOS PRINCIPALES (Ubicados arriba para evitar errores de referencia) ---
   const [currentUser, setCurrentUser] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [view, setView] = useState('overview'); // 'overview', 'standard', 'adjudicated'
+  const [adjSubView, setAdjSubView] = useState('ADP'); // 'ADP', 'ACV'
+  
   const [loading, setLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [clients, setClients] = useState([]);
   const [executives, setExecutives] = useState([]); 
   const [senderNumber, setSenderNumber] = useState('0963098362');
-  const [view, setView] = useState('overview'); 
-  const [adjSubView, setAdjSubView] = useState('ADP'); 
-  const [searchTerm, setSearchTerm] = useState('');
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -77,25 +68,34 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   
   const [newExecName, setNewExecName] = useState('');
-  const [importingSubType, setImportingSubType] = useState('ADP'); 
   const [notification, setNotification] = useState(null);
 
   const initialClientState = {
-    name: '', phone: '', installmentValue: '', planAmount: '', type: 'standard', subType: 'ADP', overdueCount: 1 
+    name: '', phone: '', installmentValue: '', planAmount: '', type: 'standard', subType: 'NONE', overdueCount: 1 
   };
   const [newClient, setNewClient] = useState(initialClientState);
 
-  // --- EFECTOS INTERACTIVOS (PARTÍCULAS MÁGICAS) ---
+  // --- CARGA DE LIBRERÍA EXCEL ---
+  useEffect(() => {
+    if (!window.XLSX) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  // --- EFECTOS INTERACTIVOS ---
   const [particles, setParticles] = useState([]);
   const handleMouseMove = (e) => {
-    if (Math.random() > 0.88) {
+    if (Math.random() > 0.9) {
       const newParticle = { id: Math.random(), x: e.clientX, y: e.clientY, size: Math.random() * 3 + 2 };
       setParticles(prev => [...prev.slice(-15), newParticle]);
     }
   };
 
   useEffect(() => {
-    const timer = setInterval(() => setParticles(prev => prev.slice(1)), 150);
+    const timer = setInterval(() => setParticles(prev => prev.slice(1)), 200);
     return () => clearInterval(timer);
   }, []);
 
@@ -112,12 +112,11 @@ export default function App() {
     setView('overview');
   };
 
-  const generateUniqueId = (prefix = 'cli') => {
-    const userPrefix = currentUser ? currentUser.replace(/\s+/g, '').substring(0, 3) : 'usr';
-    return `${userPrefix}-${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  const generateUniqueId = (prefix = 'magic') => {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
   };
 
-  // --- MOTOR DE CÁLCULO FINANCIERO (MORA Y COBRANZA ACV) ---
+  // --- MOTOR DE CÁLCULO FINANCIERO (PRECISIÓN INSTITUCIONAL) ---
   const calculateFinancials = (client) => {
     try {
       if (!client) return { totalBase: 0, totalMora: 0, totalGasto: 0, grandTotal: 0, breakdown: [] };
@@ -132,12 +131,14 @@ export default function App() {
         return { totalBase: totalNeto, totalMora: 0, totalGasto: 0, grandTotal: totalNeto, breakdown: [] };
       }
 
+      // Tasa Base ACV: ((Cuota * 72) - MontoPlan) / MontoPlan / 6
       let tapDecimal = montoPlan > 0 ? (((cuota * 72) - montoPlan) / montoPlan) / 6 : 0;
       let totalMoraValue = 0, totalGastoValue = 0, breakdown = [];
 
       for (let i = 0; i < count; i++) {
         const dueDate = new Date(today.getFullYear(), today.getMonth() - i, 5);
         const days = Math.max(0, Math.floor((today - dueDate) / (1000 * 60 * 60 * 24)));
+        
         let recargoPerc = days >= 61 ? 0.10 : (days >= 31 ? 0.09 : (days >= 16 ? 0.07 : 0.05));
         const tasaAnualMora = tapDecimal + (tapDecimal * recargoPerc);
         const moraMes = (cuota * (tasaAnualMora / 365)) * days;
@@ -188,12 +189,14 @@ export default function App() {
     message += `--------------------------------------------\n`;
     message += `*DETALLE DE DEUDA:*\n`;
 
-    if (client.subType === 'ACV' && calc.breakdown.length > 0) {
+    if (client.type !== 'standard' && calc.breakdown.length > 0) {
       calc.breakdown.forEach((item, index) => {
         message += `\n*#${index + 1} | Vence:* ${item.date}\n`;
         message += `| Cuota: $${item.cuotaBase.toFixed(2)}\n`;
-        message += `| Mora (${item.days} d.): $${item.moraValue.toFixed(2)}\n`;
-        message += `| Gto. Cobranza: $${item.collectionFee.toFixed(2)}\n`;
+        if (client.subType === 'ACV') {
+          message += `| Mora (${item.days} d.): $${item.moraValue.toFixed(2)}\n`;
+          message += `| Gto. Cobranza: $${item.collectionFee.toFixed(2)}\n`;
+        }
         message += `| *SUBTOTAL: $${item.subtotal.toFixed(2)}*\n`;
       });
     } else {
@@ -214,12 +217,12 @@ export default function App() {
     if (phone.startsWith('0')) phone = '593' + phone.substring(1); else if (phone.length === 9) phone = '593' + phone;
     window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`, '_blank');
     
-    setClients(prev => prev.map(c => c.id === client.id ? { ...c, lastMessage: new Date().toISOString().split('T')[0], messageCount: (c.messageCount || 0) + 1 } : c));
+    setClients(prev => prev.map(c => c.id === client.id ? { ...c, lastMessage: new Date().toISOString().split('T')[0] } : c));
   };
 
   // --- PERSISTENCIA ---
   useEffect(() => {
-    const savedExecs = localStorage.getItem('cobranzas_v6_executives');
+    const savedExecs = localStorage.getItem('cobranzas_v7_executives');
     setExecutives(savedExecs ? JSON.parse(savedExecs) : DEFAULT_EXECUTIVES);
   }, []);
 
@@ -228,7 +231,7 @@ export default function App() {
       setLoading(true);
       const userKey = currentUser.replace(/\s+/g, '').toLowerCase();
       setTimeout(() => {
-        const savedData = localStorage.getItem(`cobranzas_v6_data_${userKey}`);
+        const savedData = localStorage.getItem(`cobranzas_v7_data_${userKey}`);
         setClients(savedData ? JSON.parse(savedData) : []);
         setLoading(false);
         setIsDataLoaded(true);
@@ -239,7 +242,7 @@ export default function App() {
   useEffect(() => {
     if (currentUser && isDataLoaded && !loading) {
       const userKey = currentUser.replace(/\s+/g, '').toLowerCase();
-      localStorage.setItem(`cobranzas_v6_data_${userKey}`, JSON.stringify(clients));
+      localStorage.setItem(`cobranzas_v7_data_${userKey}`, JSON.stringify(clients));
     }
   }, [clients, currentUser, loading, isDataLoaded]);
 
@@ -249,8 +252,10 @@ export default function App() {
       setClients([]);
     } else if (deleteTarget === 'standard') {
       setClients(prev => prev.filter(c => c.type !== 'standard'));
-    } else {
-      setClients(prev => prev.filter(c => c.subType !== deleteTarget));
+    } else if (deleteTarget === 'ADP') {
+      setClients(prev => prev.filter(c => c.subType !== 'ADP'));
+    } else if (deleteTarget === 'ACV') {
+      setClients(prev => prev.filter(c => c.subType !== 'ACV'));
     }
     setShowDeleteConfirm(false);
     showToast("Bóveda purificada.");
@@ -259,27 +264,6 @@ export default function App() {
   const handleOpenDeleteConfirm = (target) => {
     setDeleteTarget(target);
     setShowDeleteConfirm(true);
-  };
-
-  const handleAddExecutive = (e) => {
-    e.preventDefault();
-    if (!newExecName.trim() || executives.includes(newExecName.trim())) return;
-    const newList = [...executives, newExecName.trim()];
-    setExecutives(newList);
-    localStorage.setItem('cobranzas_v6_executives', JSON.stringify(newList));
-    setNewExecName('');
-  };
-
-  const handleDeleteExecutive = (name) => {
-    const newList = executives.filter(e => e !== name);
-    setExecutives(newList);
-    localStorage.setItem('cobranzas_v6_executives', JSON.stringify(newList));
-    if (currentUser === name) handleLogout();
-  };
-
-  const handleOpenManualModal = (type, subType = 'ADP') => {
-    setNewClient({ ...initialClientState, type, subType });
-    setShowAddModal(true);
   };
 
   const handleFileUpload = (e, type, subType) => {
@@ -296,53 +280,65 @@ export default function App() {
           phone: String(row[1]).replace(/\D/g, ''),
           installmentValue: parseFloat(String(row[2]).replace(/[^\d.]/g, '')) || 0,
           overdueCount: parseInt(String(row[3]).replace(/[^\d.]/g, '')) || 1,
-          planAmount: parseFloat(String(row[4]).replace(/[^\d.]/g, '')) || 0,
-          type, subType, status: 'active', messageCount: 0, lastMessage: null, paidToday: 0
+          planAmount: parseFloat(String(row[4] || 0).replace(/[^\d.]/g, '')) || 0,
+          type: type, 
+          subType: subType, 
+          status: 'active', 
+          lastMessage: null, 
+          paidToday: 0
         }));
         setClients(prev => [...prev, ...newBatch]);
-        showToast(`${newBatch.length} registros invocados.`);
+        showToast(`Invocación exitosa en ${subType === 'NONE' ? 'Estándar' : subType}.`);
       } catch (err) { showToast("Error en el pergamino."); }
       finally { setShowImportModal(false); setShowAdjImportModal(false); }
     };
     reader.readAsArrayBuffer(file);
   };
 
+  const handleOpenManualModal = (type, subType = 'NONE') => {
+    setNewClient({ ...initialClientState, type, subType });
+    setShowAddModal(true);
+  };
+
   const handleAddClient = (e) => {
     e.preventDefault();
-    setClients(prev => [...prev, { ...newClient, id: generateUniqueId(newClient.subType), status: 'active', messageCount: 0, lastMessage: null, paidToday: 0 }]);
+    setClients(prev => [...prev, { ...newClient, id: generateUniqueId(newClient.subType), status: 'active', paidToday: 0, lastMessage: null }]);
     setShowAddModal(false);
     showToast("Mago registrado.");
   };
 
-  const filteredList = useMemo(() => {
-    const base = view === 'standard' 
-      ? clients.filter(c => c && c.type === 'standard') 
-      : clients.filter(c => c && c.type === 'adjudicated' && c.subType === adjSubView);
-    return base.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [view, clients, adjSubView, searchTerm]);
+  // --- FILTROS ESTRICTOS (PARA EVITAR REPLICACIÓN) ---
+  const standardList = useMemo(() => clients.filter(c => c && c.type === 'standard'), [clients]);
+  const adpList = useMemo(() => clients.filter(c => c && c.type === 'adjudicated' && c.subType === 'ADP'), [clients]);
+  const acvList = useMemo(() => clients.filter(c => c && c.type === 'adjudicated' && c.subType === 'ACV'), [clients]);
 
   const stats = useMemo(() => {
-    if (!Array.isArray(clients)) return { std: 0, adp: 0, acv: 0, total: 0 };
-    const std = clients.filter(c => c && c.type === 'standard').reduce((acc, c) => acc + (parseFloat(c.installmentValue) * parseFloat(c.overdueCount)), 0);
-    const adp = clients.filter(c => c && c.subType === 'ADP').reduce((acc, c) => acc + (parseFloat(c.installmentValue) * parseFloat(c.overdueCount)), 0);
-    const acv = clients.filter(c => c && c.subType === 'ACV').reduce((acc, c) => acc + calculateFinancials(c).grandTotal, 0);
-    return { std, adp, acv, total: std + adp + acv };
-  }, [clients]);
+    const sStd = standardList.reduce((acc, c) => acc + (parseFloat(c.installmentValue) * parseFloat(c.overdueCount)), 0);
+    const sAdp = adpList.reduce((acc, c) => acc + (parseFloat(c.installmentValue) * parseFloat(c.overdueCount)), 0);
+    const sAcv = acvList.reduce((acc, c) => acc + calculateFinancials(c).grandTotal, 0);
+    return { std: sStd, adp: sAdp, acv: sAcv, total: sStd + sAdp + sAcv };
+  }, [standardList, adpList, acvList]);
+
+  const filteredList = useMemo(() => {
+    let base = [];
+    if (view === 'standard') base = standardList;
+    else if (view === 'adjudicated') base = (adjSubView === 'ADP' ? adpList : acvList);
+    return base.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [view, adjSubView, standardList, adpList, acvList, searchTerm]);
 
   return (
     <div className="min-h-screen bg-slate-950 font-serif text-amber-50 relative overflow-x-hidden selection:bg-amber-500/30" onMouseMove={handleMouseMove}>
       
       {/* VELAS FLOTANTES */}
       <div className="candle-container">
-        <div className="candle" style={{ left: '10%', animationDelay: '0s' }}></div>
-        <div className="candle" style={{ left: '40%', animationDelay: '2s' }}></div>
-        <div className="candle" style={{ left: '70%', animationDelay: '1s' }}></div>
-        <div className="candle" style={{ left: '90%', animationDelay: '3s' }}></div>
+        <div className="candle" style={{ left: '15%', animationDelay: '0s' }}></div>
+        <div className="candle" style={{ left: '45%', animationDelay: '2s' }}></div>
+        <div className="candle" style={{ left: '75%', animationDelay: '1s' }}></div>
       </div>
 
       {/* LECHUZA MENSAJERA */}
       <div className="owl-messenger">
-        <Bird className="w-12 h-12 text-amber-200/20" />
+        <Bird className="w-14 h-14 text-amber-200/10" />
       </div>
 
       {particles.map(p => (
@@ -354,9 +350,9 @@ export default function App() {
       {!currentUser ? (
         <div className="min-h-screen flex items-center justify-center p-6 relative z-10 pensieve-zoom text-left">
           <div className="w-full max-w-4xl flex flex-col md:flex-row bg-slate-900/60 backdrop-blur-xl rounded-[3rem] shadow-2xl border border-amber-500/30 overflow-hidden magic-glow-border">
-            <div className="w-full md:w-5/12 bg-red-950/80 p-12 flex flex-col justify-between border-r border-amber-500/20 text-left">
+            <div className="w-full md:w-5/12 bg-red-950/80 p-12 flex flex-col justify-between border-r border-amber-500/20">
               <div className="hover-float text-left">
-                <div className="w-20 h-20 bg-amber-500 rounded-3xl flex items-center justify-center mb-10 shadow-[0_0_30px_rgba(245,158,11,0.4)] animate-pulse-glow mx-auto md:mx-0">
+                <div className="w-20 h-20 bg-amber-500 rounded-3xl flex items-center justify-center mb-10 shadow-[0_0_30px_rgba(245,158,11,0.4)] animate-pulse-glow">
                   <Flame className="w-10 h-10 text-black" />
                 </div>
                 <h1 className="text-5xl font-black italic uppercase tracking-tighter text-left font-cinzel leading-none">AUTO CLUB</h1>
@@ -369,8 +365,8 @@ export default function App() {
             <div className="w-full md:w-7/12 p-12 lg:p-16 text-left">
               <h2 className="text-2xl font-black uppercase mb-8 tracking-widest text-amber-200 font-cinzel text-left">Identifícate</h2>
               <div className="grid gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar text-left">
-                {executives.map(user => (
-                  <button key={`login-${user}`} onClick={() => setCurrentUser(user)} className="w-full flex items-center justify-between p-6 rounded-2xl bg-slate-800/40 border border-amber-500/10 hover:border-amber-500 hover:bg-amber-500/10 transition-all group magic-item-hover text-left">
+                {(executives || []).map(user => (
+                  <button key={`login-${user}`} onClick={() => setCurrentUser(user)} className="w-full flex items-center justify-between p-6 rounded-2xl bg-slate-800/40 border border-amber-500/10 hover:border-amber-500 hover:bg-amber-500/10 transition-all magic-item-hover text-left">
                     <div className="flex items-center gap-5">
                       <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500 font-black italic text-xl">{(user || 'U').charAt(0)}</div>
                       <span className="font-black text-amber-50 uppercase text-sm tracking-wider text-left">{user}</span>
@@ -386,7 +382,7 @@ export default function App() {
         <div className="pensieve-zoom flex flex-col min-h-screen relative z-10 text-left">
           <header className="sticky top-0 z-[100] bg-slate-900/80 backdrop-blur-xl border-b border-amber-500/20 px-8 py-4 shadow-2xl">
             <div className="max-w-[1400px] mx-auto flex justify-between items-center text-left">
-              <div className="flex items-center gap-10 text-left">
+              <div className="flex items-center gap-10">
                 <div className="flex items-center gap-4 cursor-pointer group text-left" onClick={() => setView('overview')}>
                   <div className="bg-amber-500 p-2.5 rounded-xl group-hover:rotate-12 transition-transform shadow-[0_0_15px_rgba(245,158,11,0.3)]">
                     <Zap className="w-5 h-5 text-black" />
@@ -415,16 +411,18 @@ export default function App() {
           <main className="max-w-[1400px] mx-auto p-10 flex-1 w-full text-left">
             {view === 'overview' ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in text-left">
+                 {/* CARTA ESTANDAR */}
                  <div className="bg-slate-900/40 rounded-[3rem] p-10 border border-amber-500/10 hover-float magic-glow-border group relative overflow-hidden text-left shadow-2xl">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500 opacity-5 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-all duration-1000"></div>
-                    <h3 className="text-2xl font-black italic uppercase mb-6 text-amber-100 tracking-widest font-cinzel text-left leading-none">Muggles Estándar</h3>
-                    <p className="text-[10px] font-bold text-amber-500/40 uppercase tracking-[0.2em] mb-2 text-left">Saldos Netos en Pergamino</p>
+                    <h3 className="text-2xl font-black uppercase italic mb-6 text-amber-100 tracking-widest font-cinzel text-left leading-none">Muggles Estándar</h3>
+                    <p className="text-[10px] font-bold text-amber-500/40 uppercase tracking-[0.2em] mb-2">Saldos Netos en Pergamino</p>
                     <p className="text-4xl font-black mb-10 text-amber-50 font-mono tracking-tighter text-left leading-none">${stats.std.toLocaleString()}</p>
                     <div className="flex gap-2">
                        <button onClick={() => setView('standard')} className="flex-1 py-5 bg-amber-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest lumos-effect shadow-xl shadow-amber-900/20 font-cinzel">Gestionar</button>
                        <button onClick={() => handleOpenDeleteConfirm('standard')} className="p-5 bg-red-950 text-red-500 rounded-2xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button>
                     </div>
                  </div>
+                 {/* CARTA ADP */}
                  <div className="bg-indigo-950/40 rounded-[3rem] p-10 border border-blue-500/20 hover-float magic-glow-border-blue group relative overflow-hidden text-left shadow-2xl">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 opacity-5 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-all duration-1000"></div>
                     <h3 className="text-2xl font-black uppercase italic mb-6 text-blue-100 tracking-widest font-cinzel text-left leading-none">Bóvedas ADP</h3>
@@ -435,6 +433,7 @@ export default function App() {
                        <button onClick={() => handleOpenDeleteConfirm('ADP')} className="p-5 bg-red-950 text-red-500 rounded-2xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button>
                     </div>
                  </div>
+                 {/* CARTA ACV */}
                  <div className="bg-emerald-950/40 rounded-[3rem] p-10 border border-emerald-500/20 hover-float magic-glow-border-green group relative overflow-hidden text-left shadow-2xl">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 opacity-5 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-all duration-1000"></div>
                     <h3 className="text-2xl font-black uppercase italic mb-6 text-emerald-100 tracking-widest font-cinzel text-left text-left text-left leading-none">Bóvedas ACV</h3>
@@ -451,9 +450,8 @@ export default function App() {
                 <div className="p-8 border-b border-amber-500/10 flex justify-between items-center bg-black/20 text-left">
                   <h2 className="text-2xl font-black uppercase italic text-amber-100 font-cinzel tracking-widest leading-none text-left">Sección {view === 'standard' ? 'Muggles' : adjSubView}</h2>
                   <div className="flex gap-4">
-                    <button onClick={() => handleOpenDeleteConfirm(view === 'standard' ? 'standard' : adjSubView)} className="bg-red-950 text-red-500 border border-red-500/20 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2"><Trash2 className="w-4 h-4" /> Purgar Base</button>
-                    <button onClick={() => setShowImportModal(true)} className="bg-slate-800 text-amber-500 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest lumos-effect border border-amber-500/20">Invocar Excel</button>
-                    <button onClick={() => handleOpenManualModal(view === 'standard' ? 'standard' : 'adjudicated', adjSubView)} className="bg-amber-500 text-black px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest lumos-effect shadow-lg shadow-amber-900/30 transition-all">Nuevo</button>
+                    <button onClick={() => setShowImportModal(true)} className="bg-slate-800 text-amber-500 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest lumos-effect border border-amber-500/20 transition-all">Invocar Excel</button>
+                    <button onClick={() => handleOpenManualModal(view === 'standard' ? 'standard' : 'adjudicated', (view === 'standard' ? 'NONE' : adjSubView))} className="bg-amber-500 text-black px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest lumos-effect shadow-lg shadow-amber-900/30 transition-all">Nuevo</button>
                   </div>
                 </div>
                 
@@ -475,7 +473,7 @@ export default function App() {
                             <th className="px-10 py-6 text-right uppercase">Base</th>
                             <th className="px-10 py-6 text-right uppercase text-orange-400">Mora</th>
                             <th className="px-10 py-6 text-right uppercase text-slate-400">Gasto</th>
-                            <th className="px-10 py-6 text-right uppercase text-emerald-500">Total</th>
+                            <th className="px-10 py-6 text-right uppercase text-emerald-500 font-black">Total</th>
                             <th className="px-10 py-6 text-center">Magia</th>
                           </tr>
                         ) : (
@@ -490,12 +488,11 @@ export default function App() {
                       <tbody className="divide-y divide-amber-500/5 text-left font-serif italic text-left">
                         {filteredList.map(c => {
                           const f = calculateFinancials(c);
-                          const totalVal = (view === 'standard' ? (parseFloat(c.installmentValue) * parseFloat(c.overdueCount)) : f.grandTotal);
                           return (
                             <tr key={c.id} className="hover:bg-amber-500/[0.04] transition-all group cursor-default text-left">
                               <td className="px-10 py-7 text-left leading-tight text-left">
                                 <p className="font-black uppercase text-amber-100 tracking-wider text-left leading-none mb-1 font-cinzel">{c.name}</p>
-                                <p className="text-[10px] text-amber-500/30 font-mono tracking-widest not-italic text-left">{c.overdueCount} LUNAS VENCIDAS</p>
+                                <p className="text-[10px] text-amber-500/30 font-mono tracking-widest not-italic text-left uppercase">{c.overdueCount} LUNAS VENCIDAS</p>
                               </td>
                               <td className="px-10 py-7 text-right font-mono font-bold text-amber-500/40 text-left">${(parseFloat(c.installmentValue) || 0).toFixed(2)}</td>
                               
@@ -507,15 +504,12 @@ export default function App() {
                                 </>
                               ) : (
                                 <td className="px-10 py-7 text-right font-black text-amber-500 text-xl font-mono text-left shadow-inner">
-                                  ${totalVal.toFixed(2)}
+                                  ${(parseFloat(c.installmentValue) * parseInt(c.overdueCount)).toFixed(2)}
                                 </td>
                               )}
 
                               <td className="px-10 py-7 text-center">
-                                 <div className="flex justify-center gap-2">
-                                    <button onClick={() => sendWhatsApp(c)} className="bg-slate-800 p-4 rounded-2xl text-amber-500 border border-amber-500/20 hover:bg-amber-500 hover:text-black transition-all group-hover:scale-110 lumos-effect shadow-md"><MessageCircle className="w-5 h-5" /></button>
-                                    <button onClick={() => setClients(prev => prev.filter(item => item.id !== c.id))} className="p-4 rounded-2xl text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90 border border-red-500/10"><Trash2 className="w-5 h-5" /></button>
-                                 </div>
+                                 <button onClick={() => sendWhatsApp(c)} className="bg-slate-800 p-4 rounded-2xl text-amber-500 border border-amber-500/20 hover:bg-amber-500 hover:text-black transition-all group-hover:scale-110 lumos-effect shadow-md shadow-black/40"><MessageCircle className="w-5 h-5" /></button>
                               </td>
                             </tr>
                           );
@@ -537,7 +531,7 @@ export default function App() {
             <div className="w-20 h-20 bg-red-500 text-black rounded-3xl flex items-center justify-center mb-8 shadow-xl mx-auto"><AlertCircle className="w-10 h-10" /></div>
             <h3 className="text-2xl font-black uppercase mb-3 tracking-tighter text-amber-100 text-center font-cinzel">¿Confirmar Purga?</h3>
             <p className="text-amber-100/40 text-xs mb-10 leading-relaxed text-center font-serif italic">
-              Este hechizo de desvanecimiento eliminará permanentemente los registros de <strong>{deleteTarget === 'all' ? 'TODA LA BÓVEDA' : deleteTarget}</strong>. Esta acción no se puede deshacer.
+              Este hechizo de desvanecimiento eliminará permanentemente los registros de <strong>{deleteTarget === 'all' ? 'TODA LA BÓVEDA' : (deleteTarget === 'standard' ? 'MUGGLES ESTÁNDAR' : deleteTarget)}</strong>. Esta acción no se puede deshacer.
             </p>
             <div className="space-y-3">
                <button onClick={handleClearDatabase} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] shadow-xl active:scale-95 text-center tracking-[0.2em] hover:bg-red-500 transition-all font-cinzel">LANZAR PURGA</button>
@@ -547,7 +541,57 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL USER MGMT */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-950/90 z-[500] flex items-center justify-center p-6 backdrop-blur-md animate-fade-in text-left">
+          <div className="bg-slate-900 rounded-[3.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-amber-500/30 pensieve-zoom text-left">
+            <div className={`h-3 w-full ${newClient.subType === 'ACV' ? 'bg-emerald-500' : 'bg-blue-600'}`}></div>
+            <form onSubmit={handleAddClient} className="p-10 space-y-6 text-left">
+              <h3 className="text-xl font-black uppercase text-amber-100 font-cinzel tracking-widest text-left leading-none font-cinzel">Inscripción Manual</h3>
+              <div className="space-y-5 text-left">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest">Identidad Muggle</label>
+                  <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black uppercase text-sm outline-none focus:border-amber-500 text-left" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} placeholder="Nombre" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest">Búho (Celular)</label>
+                  <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black text-sm outline-none focus:border-amber-500 font-mono text-left" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} placeholder="593..." />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-left">
+                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left text-left">Cuota Galeón</label>
+                    <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono text-left" value={newClient.installmentValue} onChange={e => setNewClient({...newClient, installmentValue: e.target.value})} />
+                  </div>
+                  <div className="text-left text-left">
+                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left text-left">Lunas</label>
+                    <input required type="number" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono text-left" value={newClient.overdueCount} onChange={e => setNewClient({...newClient, overdueCount: e.target.value})} />
+                  </div>
+                </div>
+                {newClient.subType === 'ACV' && (
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-emerald-500">Valor del Plan ($)</label>
+                    <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-emerald-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-emerald-500 font-mono shadow-inner" value={newClient.planAmount} onChange={e => setNewClient({...newClient, planAmount: e.target.value})} placeholder="Ej: 20000" />
+                  </div>
+                )}
+              </div>
+              <button type="submit" className="w-full py-5 bg-amber-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest lumos-effect shadow-xl active:scale-95 border-b-4 border-amber-700 font-cinzel text-center">Sellar Registro</button>
+              <button type="button" onClick={() => setShowAddModal(false)} className="w-full text-xs font-black text-slate-500 uppercase tracking-widest pt-2 hover:text-amber-100 text-center transition-colors">Cerrar</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 bg-slate-950/95 z-[500] flex items-center justify-center p-6 backdrop-blur-3xl animate-fade-in text-center">
+          <div className="bg-slate-900 rounded-[4rem] shadow-[0_0_100px_rgba(245,158,11,0.1)] w-full max-w-sm p-12 border-2 border-amber-500/30 text-center relative pensieve-zoom text-center">
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-amber-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-amber-900/40 animate-pulse-glow"><Sparkles className="w-12 h-12 text-black text-left" /></div>
+             <h3 className="text-3xl font-black italic uppercase mb-2 tracking-tighter text-amber-100 mt-10 font-cinzel text-center leading-tight">Invocar Registros</h3>
+             <input type="file" accept=".xlsx, .xls" onChange={(e) => handleFileUpload(e, view === 'standard' ? 'standard' : 'adjudicated', view === 'standard' ? 'NONE' : adjSubView)} className="hidden" id="file-std-modal" />
+             <label htmlFor="file-std-modal" className="cursor-pointer block w-full py-6 bg-amber-500 text-black rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-amber-400 active:scale-95 transition-all mb-6 lumos-effect font-cinzel text-center">Elegir Pergamino</label>
+             <button onClick={() => setShowImportModal(false)} className="text-[10px] font-black uppercase text-amber-500/20 hover:text-amber-50 transition-all tracking-widest font-cinzel text-center">Regresar</button>
+          </div>
+        </div>
+      )}
+
       {showUserMgmtModal && (
         <div className="fixed inset-0 bg-slate-950/95 z-[600] flex items-center justify-center p-6 backdrop-blur-2xl animate-fade-in text-left">
           <div className="bg-slate-900 rounded-[3rem] w-full max-w-md overflow-hidden border-2 border-amber-500/30 flex flex-col max-h-[90vh] shadow-2xl pensieve-zoom text-left text-left">
@@ -566,7 +610,7 @@ export default function App() {
               <div className="space-y-3 text-left">
                 {executives.map(name => (
                   <div key={`exec-${name}`} className="flex items-center justify-between p-5 bg-black/20 rounded-2xl border border-amber-500/5 group hover:border-amber-500/30 transition-all magic-item-hover text-left">
-                    <span className="font-black text-amber-100/80 text-sm uppercase tracking-wider text-left">{name}</span>
+                    <span className="font-black text-amber-100/80 text-sm uppercase tracking-wider text-left font-cinzel">{name}</span>
                     <button onClick={() => handleDeleteExecutive(name)} className="p-2 text-red-950 hover:text-red-500 transition-all text-left"><UserMinus className="w-5 h-5 text-left" /></button>
                   </div>
                 ))}
@@ -576,58 +620,7 @@ export default function App() {
         </div>
       )}
 
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-950/90 z-[500] flex items-center justify-center p-6 backdrop-blur-md animate-fade-in text-left">
-          <div className="bg-slate-900 rounded-[3.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-amber-500/30 pensieve-zoom text-left">
-            <div className={`h-3 w-full ${newClient.subType === 'ACV' ? 'bg-emerald-500' : 'bg-blue-600'}`}></div>
-            <form onSubmit={handleAddClient} className="p-10 space-y-6 text-left">
-              <h3 className="text-xl font-black uppercase text-amber-100 font-cinzel tracking-widest text-left leading-none font-cinzel">Inscripción Manual</h3>
-              <div className="space-y-5 text-left">
-                <div>
-                  <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left">Identidad Muggle</label>
-                  <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black uppercase text-sm outline-none focus:border-amber-500 text-left" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} placeholder="Nombre" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left">Búho (Celular)</label>
-                  <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black text-sm outline-none focus:border-amber-500 font-mono text-left" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} placeholder="593..." />
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-left">
-                  <div className="text-left">
-                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left text-left">Cuota Galeón</label>
-                    <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono text-left" value={newClient.installmentValue} onChange={e => setNewClient({...newClient, installmentValue: e.target.value})} />
-                  </div>
-                  <div className="text-left text-left">
-                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left text-left">Lunas</label>
-                    <input required type="number" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono text-left" value={newClient.overdueCount} onChange={e => setNewClient({...newClient, overdueCount: e.target.value})} />
-                  </div>
-                </div>
-                {newClient.subType === 'ACV' && (
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left text-emerald-500">Valor del Plan ($)</label>
-                    <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-emerald-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-emerald-500 font-mono" value={newClient.planAmount} onChange={e => setNewClient({...newClient, planAmount: e.target.value})} placeholder="Monto total del plan" />
-                  </div>
-                )}
-              </div>
-              <button type="submit" className="w-full py-5 bg-amber-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest lumos-effect shadow-xl active:scale-95 border-b-4 border-amber-700 font-cinzel text-center">Sellar Registro</button>
-              <button type="button" onClick={() => setShowAddModal(false)} className="w-full text-xs font-black text-slate-500 uppercase tracking-widest pt-2 hover:text-amber-100 text-center transition-colors">Cerrar</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showImportModal && (
-        <div className="fixed inset-0 bg-slate-950/95 z-[500] flex items-center justify-center p-6 backdrop-blur-3xl animate-fade-in text-center">
-          <div className="bg-slate-900 rounded-[4rem] shadow-[0_0_100px_rgba(245,158,11,0.1)] w-full max-w-sm p-12 border-2 border-amber-500/30 text-center relative pensieve-zoom text-center">
-             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-amber-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-amber-900/40 animate-pulse-glow text-left"><Sparkles className="w-12 h-12 text-black text-left" /></div>
-             <h3 className="text-3xl font-black italic uppercase mb-2 tracking-tighter text-amber-100 mt-10 font-cinzel text-center leading-tight">Invocar Registros</h3>
-             <p className="text-amber-500/40 text-[9px] font-black uppercase mb-12 tracking-[0.4em] text-center">Pergamino Sagrado de Datos</p>
-             <input type="file" accept=".xlsx, .xls" onChange={(e) => handleFileUpload(e, view === 'standard' ? 'standard' : 'adjudicated', view === 'standard' ? 'ADP' : adjSubView)} className="hidden" id="file-std-modal" />
-             <label htmlFor="file-std-modal" className="cursor-pointer block w-full py-6 bg-amber-500 text-black rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-amber-400 active:scale-95 transition-all mb-6 lumos-effect font-cinzel text-center">Elegir Pergamino</label>
-             <button onClick={() => setShowImportModal(false)} className="text-[10px] font-black uppercase text-amber-500/20 hover:text-amber-50 transition-all tracking-widest font-cinzel text-center text-center">Regresar</button>
-          </div>
-        </div>
-      )}
-
+      {/* ESTILOS MAGICOS */}
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Montserrat:wght@100;400;700;900&display=swap');
         
@@ -681,7 +674,7 @@ export default function App() {
 
         .hover-float:hover { transform: translateY(-10px); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .magic-item-hover:hover { transform: scale(1.02); box-shadow: 0 0 35px rgba(245, 158, 11, 0.15); }
-        .lumos-effect:active { box-shadow: 0 0 60px #fff !important; transition: box-shadow 0.1s; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="%238B4513" d="M2 30L30 2l-2-2L0 28z"/><circle cx="30" cy="2" r="2" fill="%23FFF"/><circle cx="30" cy="2" r="4" fill="%23FFF" fill-opacity="0.3"/></svg>') 30 2, auto; }
+        .lumos-effect:active { box-shadow: 0 0 60px #fff !important; transition: box-shadow 0.1s; }
 
         .animate-slow-spin { animation: spin 25s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -696,13 +689,12 @@ export default function App() {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 10px; box-shadow: 0 0 5px rgba(245,158,11,0.5); }
         
-        /* VARITA CURSOR */
         * { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="%235D4037" d="M4 28L28 4l2 2L6 30z"/><circle cx="28" cy="4" r="2" fill="%23FFD54F"/><circle cx="28" cy="4" r="5" fill="%23FFD54F" fill-opacity="0.4"/></svg>') 28 4, auto !important; }
       `}} />
 
       {/* TOAST MAGIA */}
       {notification && (
-        <div className="fixed bottom-12 right-12 z-[700] animate-bounce-in text-left">
+        <div className="fixed bottom-12 right-12 z-[800] animate-bounce-in text-left">
           <div className="bg-slate-900/90 backdrop-blur-xl text-amber-50 px-8 py-6 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-2 border-amber-500/30 flex items-center gap-5 text-left group magic-glow-border text-left">
              <div className="bg-amber-500 p-2 rounded-xl text-black group-hover:rotate-12 transition-transform text-left"><CheckCircle className="w-5 h-5 text-left text-left" /></div>
              <div className="text-left text-left">
