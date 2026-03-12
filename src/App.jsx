@@ -47,12 +47,12 @@ const DEFAULT_EXECUTIVES = [
 ];
 
 export default function App() {
-  // --- ESTADOS PRINCIPALES (Ubicados arriba para evitar errores de referencia) ---
+  // --- ESTADOS PRINCIPALES ---
   const [currentUser, setCurrentUser] = useState(null);
   const [clients, setClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState('overview'); // 'overview', 'standard', 'adjudicated'
-  const [adjSubView, setAdjSubView] = useState('ADP'); // 'ADP', 'ACV'
+  const [view, setView] = useState('overview'); 
+  const [adjSubView, setAdjSubView] = useState('ADP'); 
   
   const [loading, setLoading] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -85,7 +85,7 @@ export default function App() {
     }
   }, []);
 
-  // --- EFECTOS INTERACTIVOS ---
+  // --- EFECTOS INTERACTIVOS (PARTÍCULAS) ---
   const [particles, setParticles] = useState([]);
   const handleMouseMove = (e) => {
     if (Math.random() > 0.9) {
@@ -116,7 +116,7 @@ export default function App() {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
   };
 
-  // --- MOTOR DE CÁLCULO FINANCIERO (PRECISIÓN INSTITUCIONAL) ---
+  // --- MOTOR DE CÁLCULO FINANCIERO ---
   const calculateFinancials = (client) => {
     try {
       if (!client) return { totalBase: 0, totalMora: 0, totalGasto: 0, grandTotal: 0, breakdown: [] };
@@ -131,14 +131,12 @@ export default function App() {
         return { totalBase: totalNeto, totalMora: 0, totalGasto: 0, grandTotal: totalNeto, breakdown: [] };
       }
 
-      // Tasa Base ACV: ((Cuota * 72) - MontoPlan) / MontoPlan / 6
       let tapDecimal = montoPlan > 0 ? (((cuota * 72) - montoPlan) / montoPlan) / 6 : 0;
       let totalMoraValue = 0, totalGastoValue = 0, breakdown = [];
 
       for (let i = 0; i < count; i++) {
         const dueDate = new Date(today.getFullYear(), today.getMonth() - i, 5);
         const days = Math.max(0, Math.floor((today - dueDate) / (1000 * 60 * 60 * 24)));
-        
         let recargoPerc = days >= 61 ? 0.10 : (days >= 31 ? 0.09 : (days >= 16 ? 0.07 : 0.05));
         const tasaAnualMora = tapDecimal + (tapDecimal * recargoPerc);
         const moraMes = (cuota * (tasaAnualMora / 365)) * days;
@@ -307,7 +305,7 @@ export default function App() {
     showToast("Mago registrado.");
   };
 
-  // --- FILTROS ESTRICTOS (PARA EVITAR REPLICACIÓN) ---
+  // --- FILTROS ESTRICTOS ---
   const standardList = useMemo(() => clients.filter(c => c && c.type === 'standard'), [clients]);
   const adpList = useMemo(() => clients.filter(c => c && c.type === 'adjudicated' && c.subType === 'ADP'), [clients]);
   const acvList = useMemo(() => clients.filter(c => c && c.type === 'adjudicated' && c.subType === 'ACV'), [clients]);
@@ -339,6 +337,26 @@ export default function App() {
       {/* LECHUZA MENSAJERA */}
       <div className="owl-messenger">
         <Bird className="w-14 h-14 text-amber-200/10" />
+      </div>
+
+      {/* ANIMACIÓN HARRY POTTER */}
+      <div className="harry-potter-animation">
+        <svg viewBox="0 0 100 100" className="harry-svg">
+           {/* Cara */}
+           <circle cx="50" cy="40" r="25" fill="#fbd5b5" />
+           {/* Pelo */}
+           <path d="M25 40 Q25 15 50 15 T75 40 Z" fill="#2d2d2d" />
+           {/* Gafas */}
+           <circle cx="40" cy="45" r="8" fill="none" stroke="#2d2d2d" strokeWidth="2" />
+           <circle cx="60" cy="45" r="8" fill="none" stroke="#2d2d2d" strokeWidth="2" />
+           <line x1="48" y1="45" x2="52" y2="45" stroke="#2d2d2d" strokeWidth="2" />
+           {/* Cicatriz */}
+           <path d="M48 25 L52 30 L48 35" fill="none" stroke="#e63946" strokeWidth="1.5" />
+           {/* Bufanda Gryffindor */}
+           <rect x="30" y="60" width="40" height="15" fill="#740001" rx="2" />
+           <path d="M40 60 L40 75 M50 60 L50 75 M60 60 L60 75" stroke="#eeb932" strokeWidth="4" />
+           <path className="scarf-end" d="M60 75 Q70 85 65 95" fill="none" stroke="#740001" strokeWidth="10" strokeLinecap="round" />
+        </svg>
       </div>
 
       {particles.map(p => (
@@ -399,7 +417,7 @@ export default function App() {
                 <div className="relative text-left flex items-center bg-black/30 border border-amber-500/20 rounded-xl px-4 py-1.5">
                    <Search className="w-3 h-3 text-amber-500/40" />
                    <input 
-                    className="bg-transparent border-none outline-none text-xs font-black uppercase text-amber-100 pl-3 w-32 placeholder:text-amber-900"
+                    className="bg-transparent border-none outline-none text-xs font-black uppercase text-amber-100 pl-3 w-32 placeholder:text-amber-900 shadow-none"
                     placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                    />
                 </div>
@@ -411,7 +429,6 @@ export default function App() {
           <main className="max-w-[1400px] mx-auto p-10 flex-1 w-full text-left">
             {view === 'overview' ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in text-left">
-                 {/* CARTA ESTANDAR */}
                  <div className="bg-slate-900/40 rounded-[3rem] p-10 border border-amber-500/10 hover-float magic-glow-border group relative overflow-hidden text-left shadow-2xl">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500 opacity-5 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-all duration-1000"></div>
                     <h3 className="text-2xl font-black uppercase italic mb-6 text-amber-100 tracking-widest font-cinzel text-left leading-none">Muggles Estándar</h3>
@@ -422,7 +439,6 @@ export default function App() {
                        <button onClick={() => handleOpenDeleteConfirm('standard')} className="p-5 bg-red-950 text-red-500 rounded-2xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button>
                     </div>
                  </div>
-                 {/* CARTA ADP */}
                  <div className="bg-indigo-950/40 rounded-[3rem] p-10 border border-blue-500/20 hover-float magic-glow-border-blue group relative overflow-hidden text-left shadow-2xl">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 opacity-5 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-all duration-1000"></div>
                     <h3 className="text-2xl font-black uppercase italic mb-6 text-blue-100 tracking-widest font-cinzel text-left leading-none">Bóvedas ADP</h3>
@@ -433,7 +449,6 @@ export default function App() {
                        <button onClick={() => handleOpenDeleteConfirm('ADP')} className="p-5 bg-red-950 text-red-500 rounded-2xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button>
                     </div>
                  </div>
-                 {/* CARTA ACV */}
                  <div className="bg-emerald-950/40 rounded-[3rem] p-10 border border-emerald-500/20 hover-float magic-glow-border-green group relative overflow-hidden text-left shadow-2xl">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 opacity-5 -mr-16 -mt-16 rounded-full group-hover:scale-150 transition-all duration-1000"></div>
                     <h3 className="text-2xl font-black uppercase italic mb-6 text-emerald-100 tracking-widest font-cinzel text-left text-left text-left leading-none">Bóvedas ACV</h3>
@@ -450,7 +465,7 @@ export default function App() {
                 <div className="p-8 border-b border-amber-500/10 flex justify-between items-center bg-black/20 text-left">
                   <h2 className="text-2xl font-black uppercase italic text-amber-100 font-cinzel tracking-widest leading-none text-left">Sección {view === 'standard' ? 'Muggles' : adjSubView}</h2>
                   <div className="flex gap-4">
-                    <button onClick={() => setShowImportModal(true)} className="bg-slate-800 text-amber-500 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest lumos-effect border border-amber-500/20 transition-all">Invocar Excel</button>
+                    <button onClick={() => setShowImportModal(true)} className="bg-slate-800 text-amber-500 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest lumos-effect border border-amber-500/20">Invocar Excel</button>
                     <button onClick={() => handleOpenManualModal(view === 'standard' ? 'standard' : 'adjudicated', (view === 'standard' ? 'NONE' : adjSubView))} className="bg-amber-500 text-black px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest lumos-effect shadow-lg shadow-amber-900/30 transition-all">Nuevo</button>
                   </div>
                 </div>
@@ -459,7 +474,7 @@ export default function App() {
                    <div className="bg-black/40 p-2 border-b border-amber-500/10 flex justify-center text-left">
                       <div className="flex bg-slate-800 p-1 rounded-xl gap-2 border border-amber-500/10 shadow-inner">
                          <button onClick={() => setAdjSubView('ADP')} className={`px-12 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${adjSubView === 'ADP' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>ADP</button>
-                         <button onClick={() => setAdjSubView('ACV')} className={`px-12 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${adjSubView === 'ACV' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500'}`}>ACV</button>
+                         <button onClick={() => setAdjSubView('ACV')} className={`px-12 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${adjSubView === 'ACV' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500'}`}>ACV</button>
                       </div>
                    </div>
                 )}
@@ -509,7 +524,10 @@ export default function App() {
                               )}
 
                               <td className="px-10 py-7 text-center">
-                                 <button onClick={() => sendWhatsApp(c)} className="bg-slate-800 p-4 rounded-2xl text-amber-500 border border-amber-500/20 hover:bg-amber-500 hover:text-black transition-all group-hover:scale-110 lumos-effect shadow-md shadow-black/40"><MessageCircle className="w-5 h-5" /></button>
+                                 <div className="flex justify-center gap-2">
+                                    <button onClick={() => sendWhatsApp(c)} className="bg-slate-800 p-4 rounded-2xl text-amber-500 border border-amber-500/20 hover:bg-amber-500 hover:text-black transition-all group-hover:scale-110 lumos-effect shadow-md shadow-black/40"><MessageCircle className="w-5 h-5" /></button>
+                                    <button onClick={() => setClients(prev => prev.filter(item => item.id !== c.id))} className="p-4 rounded-2xl text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90 border border-red-500/10"><Trash2 className="w-5 h-5" /></button>
+                                 </div>
                               </td>
                             </tr>
                           );
@@ -531,7 +549,7 @@ export default function App() {
             <div className="w-20 h-20 bg-red-500 text-black rounded-3xl flex items-center justify-center mb-8 shadow-xl mx-auto"><AlertCircle className="w-10 h-10" /></div>
             <h3 className="text-2xl font-black uppercase mb-3 tracking-tighter text-amber-100 text-center font-cinzel">¿Confirmar Purga?</h3>
             <p className="text-amber-100/40 text-xs mb-10 leading-relaxed text-center font-serif italic">
-              Este hechizo de desvanecimiento eliminará permanentemente los registros de <strong>{deleteTarget === 'all' ? 'TODA LA BÓVEDA' : (deleteTarget === 'standard' ? 'MUGGLES ESTÁNDAR' : deleteTarget)}</strong>. Esta acción no se puede deshacer.
+              Este hechizo de desvanecimiento eliminará permanentemente los registros de <strong>{deleteTarget === 'all' ? 'TODA LA BÓVEDA' : (deleteTarget === 'standard' ? 'MUGGLES ESTÁNDAR' : deleteTarget)}</strong>.
             </p>
             <div className="space-y-3">
                <button onClick={handleClearDatabase} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-[10px] shadow-xl active:scale-95 text-center tracking-[0.2em] hover:bg-red-500 transition-all font-cinzel">LANZAR PURGA</button>
@@ -548,29 +566,14 @@ export default function App() {
             <form onSubmit={handleAddClient} className="p-10 space-y-6 text-left">
               <h3 className="text-xl font-black uppercase text-amber-100 font-cinzel tracking-widest text-left leading-none font-cinzel">Inscripción Manual</h3>
               <div className="space-y-5 text-left">
-                <div>
-                  <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest">Identidad Muggle</label>
-                  <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black uppercase text-sm outline-none focus:border-amber-500 text-left" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} placeholder="Nombre" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest">Búho (Celular)</label>
-                  <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black text-sm outline-none focus:border-amber-500 font-mono text-left" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} placeholder="593..." />
-                </div>
+                <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black uppercase text-sm outline-none focus:border-amber-500" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} placeholder="Nombre" />
+                <input required className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black text-sm outline-none focus:border-amber-500 font-mono" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} placeholder="593..." />
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="text-left">
-                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left text-left">Cuota Galeón</label>
-                    <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono text-left" value={newClient.installmentValue} onChange={e => setNewClient({...newClient, installmentValue: e.target.value})} />
-                  </div>
-                  <div className="text-left text-left">
-                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-left text-left">Lunas</label>
-                    <input required type="number" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono text-left" value={newClient.overdueCount} onChange={e => setNewClient({...newClient, overdueCount: e.target.value})} />
-                  </div>
+                  <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono" value={newClient.installmentValue} onChange={e => setNewClient({...newClient, installmentValue: e.target.value})} placeholder="Cuota" />
+                  <input required type="number" className="w-full p-4 bg-black/40 border border-amber-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-amber-500 font-mono" value={newClient.overdueCount} onChange={e => setNewClient({...newClient, overdueCount: e.target.value})} placeholder="Lunas" />
                 </div>
                 {newClient.subType === 'ACV' && (
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-amber-500/40 mb-2 tracking-widest text-emerald-500">Valor del Plan ($)</label>
-                    <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-emerald-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-emerald-500 font-mono shadow-inner" value={newClient.planAmount} onChange={e => setNewClient({...newClient, planAmount: e.target.value})} placeholder="Ej: 20000" />
-                  </div>
+                  <input required type="number" step="0.01" className="w-full p-4 bg-black/40 border border-emerald-500/20 rounded-2xl text-amber-100 font-black outline-none focus:border-emerald-500 font-mono" value={newClient.planAmount} onChange={e => setNewClient({...newClient, planAmount: e.target.value})} placeholder="Valor del Plan" />
                 )}
               </div>
               <button type="submit" className="w-full py-5 bg-amber-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest lumos-effect shadow-xl active:scale-95 border-b-4 border-amber-700 font-cinzel text-center">Sellar Registro</button>
@@ -594,7 +597,7 @@ export default function App() {
 
       {showUserMgmtModal && (
         <div className="fixed inset-0 bg-slate-950/95 z-[600] flex items-center justify-center p-6 backdrop-blur-2xl animate-fade-in text-left">
-          <div className="bg-slate-900 rounded-[3rem] w-full max-w-md overflow-hidden border-2 border-amber-500/30 flex flex-col max-h-[90vh] shadow-2xl pensieve-zoom text-left text-left">
+          <div className="bg-slate-900 rounded-[3rem] w-full max-w-md overflow-hidden border-2 border-amber-500/30 flex flex-col max-h-[90vh] shadow-2xl pensieve-zoom text-left">
             <div className="px-10 py-8 border-b border-amber-500/10 flex justify-between items-center bg-black/40 text-left">
               <div className="flex items-center gap-3 text-left">
                  <ShieldCheck className="w-5 h-5 text-amber-500" />
@@ -609,8 +612,8 @@ export default function App() {
               </form>
               <div className="space-y-3 text-left">
                 {executives.map(name => (
-                  <div key={`exec-${name}`} className="flex items-center justify-between p-5 bg-black/20 rounded-2xl border border-amber-500/5 group hover:border-amber-500/30 transition-all magic-item-hover text-left">
-                    <span className="font-black text-amber-100/80 text-sm uppercase tracking-wider text-left font-cinzel">{name}</span>
+                  <div key={`exec-${name}`} className="flex items-center justify-between p-5 bg-black/20 rounded-2xl border border-amber-500/5 group hover:border-amber-500/30 transition-all magic-item-hover text-left font-cinzel tracking-wider">
+                    <span>{name}</span>
                     <button onClick={() => handleDeleteExecutive(name)} className="p-2 text-red-950 hover:text-red-500 transition-all text-left"><UserMinus className="w-5 h-5 text-left" /></button>
                   </div>
                 ))}
@@ -657,6 +660,18 @@ export default function App() {
           100% { transform: translate(120vw, 500px) rotate(10deg); opacity: 0; }
         }
 
+        /* HARRY POTTER ANIMATION */
+        .harry-potter-animation {
+          position: fixed; bottom: 20px; right: 20px;
+          width: 80px; height: 80px; z-index: 60;
+          animation: float-harry 4s ease-in-out infinite;
+          filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.3));
+        }
+        .harry-svg { width: 100%; height: 100%; }
+        .scarf-end { animation: wave-scarf 3s ease-in-out infinite alternate; transform-origin: 60px 75px; }
+        @keyframes float-harry { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-15px) rotate(5deg); } }
+        @keyframes wave-scarf { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+
         .magic-particle {
           position: fixed; background: #fbbf24; border-radius: 50%;
           pointer-events: none; z-index: 9999;
@@ -694,7 +709,7 @@ export default function App() {
 
       {/* TOAST MAGIA */}
       {notification && (
-        <div className="fixed bottom-12 right-12 z-[800] animate-bounce-in text-left">
+        <div className="fixed bottom-12 right-12 z-[800] animate-bounce-in text-left text-left">
           <div className="bg-slate-900/90 backdrop-blur-xl text-amber-50 px-8 py-6 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border-2 border-amber-500/30 flex items-center gap-5 text-left group magic-glow-border text-left">
              <div className="bg-amber-500 p-2 rounded-xl text-black group-hover:rotate-12 transition-transform text-left"><CheckCircle className="w-5 h-5 text-left text-left" /></div>
              <div className="text-left text-left">
